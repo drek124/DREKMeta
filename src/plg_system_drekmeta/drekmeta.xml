@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension type="plugin" group="system" method="upgrade">
+	<name>plg_system_drekmeta</name>
+	<author>drek124</author>
+	<authorUrl>https://github.com/drek124</authorUrl>
+	<creationDate>2026-11</creationDate>
+	<copyright>(C) 2026 drek124</copyright>
+	<license>GNU General Public License version 2 or later; see LICENSE.txt</license>
+	<version>1.0.0</version>
+	<description>PLG_SYSTEM_DREKMETA_XML_DESCRIPTION</description>
+	<namespace path="src">Drek\Plugin\System\Drekmeta</namespace>
+	<files>
+		<folder plugin="drekmeta">services</folder>
+		<folder>src</folder>
+		<folder>language</folder>
+	</files>
+</extension>

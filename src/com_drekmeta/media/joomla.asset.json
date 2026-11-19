@@ -1,0 +1,41 @@
+{
+  "$schema": "https://developer.joomla.org/schemas/json-schema/web_assets.json",
+  "name": "com_drekmeta",
+  "version": "1.0.0",
+  "description": "DREK Meta admin assets",
+  "license": "GPL-2.0-or-later",
+  "assets": [
+    {
+      "name": "com_drekmeta.admin",
+      "type": "style",
+      "uri": "com_drekmeta/drekmeta.css"
+    },
+    {
+      "name": "com_drekmeta.embed-core",
+      "type": "script",
+      "uri": "com_drekmeta/embed-core.js",
+      "dependencies": ["core"],
+      "attributes": {
+        "defer": true
+      }
+    },
+    {
+      "name": "com_drekmeta.builder",
+      "type": "script",
+      "uri": "com_drekmeta/builder.js",
+      "dependencies": ["com_drekmeta.embed-core"],
+      "attributes": {
+        "defer": true
+      }
+    },
+    {
+      "name": "com_drekmeta.item-edit",
+      "type": "script",
+      "uri": "com_drekmeta/item-edit.js",
+      "dependencies": ["core", "com_drekmeta.builder"],
+      "attributes": {
+        "defer": true
+      }
+    }
+  ]
+}

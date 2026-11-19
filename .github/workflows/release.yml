@@ -1,0 +1,114 @@
+name: Release package
+
+# Publishing a GitHub release tagged vX.Y.Z (or X.Y.Z) builds pkg_drekmeta-X.Y.Z.zip and attaches it to that release.
+# The tag is the single source of truth for the version: it's stamped into all three manifests before zipping.
+# Run it by hand (Actions -> Release package -> Run workflow) to get the zip as a build artifact without releasing.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to stamp into the manifests (e.g. 1.0.1)
+        required: true
+        default: 0.0.0-dev
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  package:
+    name: Build pkg_drekmeta
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          RAW="${RELEASE_TAG:-$INPUT_VERSION}"
+          VERSION="${RAW#v}"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::'$RAW' isn't a version. Tag releases like v1.2.3."
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Building version $VERSION"
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+
+      - name: Lint PHP
+        run: find src -name '*.php' -print0 | xargs -0 -n1 php -l
+
+      - name: Check JavaScript syntax
+        run: for f in src/com_drekmeta/media/js/*.js; do node --check "$f"; done
+
+      - name: Validate XML manifests and forms
+        run: |
+          find src -name '*.xml' -print0 | xargs -0 -n1 xmllint --noout
+
+      - name: Stamp version
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          DATE="$(date -u +%Y-%m)"
+          for manifest in src/pkg_drekmeta.xml src/com_drekmeta/drekmeta.xml src/plg_system_drekmeta/drekmeta.xml; do
+            sed -i -E \
+              -e "0,/<version>[^<]*<\/version>/s//<version>${VERSION}<\/version>/" \
+              -e "0,/<creationDate>[^<]*<\/creationDate>/s//<creationDate>${DATE}<\/creationDate>/" \
+              "$manifest"
+            grep -H '<version>' "$manifest"
+          done
+          sed -i -E "s/\"version\": \"[^\"]*\"/\"version\": \"${VERSION}\"/" src/com_drekmeta/media/joomla.asset.json
+
+      - name: Build zips
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          OUT="$RUNNER_TEMP/build"
+          STAGE="$OUT/stage"
+          mkdir -p "$STAGE/packages"
+
+          # -X drops extra file attributes, -D skips directory entries Joomla doesn't need.
+          (cd src/com_drekmeta && zip -rqX "$STAGE/packages/com_drekmeta.zip" . -x '.*')
+          (cd src/plg_system_drekmeta && zip -rqX "$STAGE/packages/plg_system_drekmeta.zip" . -x '.*')
+
+          cp src/pkg_drekmeta.xml src/script.php "$STAGE/"
+          cp -r src/language "$STAGE/"
+
+          PACKAGE="$OUT/pkg_drekmeta-${VERSION}.zip"
+          (cd "$STAGE" && zip -rqX "$PACKAGE" .)
+
+          echo "Package contents:"
+          unzip -l "$PACKAGE"
+          echo "PACKAGE=$PACKAGE" >> "$GITHUB_ENV"
+
+      - name: Attach to release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$RELEASE_TAG" "$PACKAGE" --clobber
+
+      - name: Upload build artifact
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pkg_drekmeta-${{ steps.version.outputs.version }}
+          path: ${{ env.PACKAGE }}
+          if-no-files-found: error

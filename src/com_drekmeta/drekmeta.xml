@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension type="component" method="upgrade">
+	<name>com_drekmeta</name>
+	<author>drek124</author>
+	<authorUrl>https://github.com/drek124</authorUrl>
+	<creationDate>2026-11</creationDate>
+	<copyright>(C) 2026 drek124</copyright>
+	<license>GNU General Public License version 2 or later; see LICENSE.txt</license>
+	<version>1.0.0</version>
+	<description>COM_DREKMETA_XML_DESCRIPTION</description>
+	<namespace path="src">Drek\Component\Drekmeta</namespace>
+
+	<install>
+		<sql>
+			<file driver="mysql" charset="utf8">sql/install.mysql.utf8.sql</file>
+			<file driver="postgresql" charset="utf8">sql/install.postgresql.utf8.sql</file>
+		</sql>
+	</install>
+	<uninstall>
+		<sql>
+			<file driver="mysql" charset="utf8">sql/uninstall.mysql.utf8.sql</file>
+			<file driver="postgresql" charset="utf8">sql/uninstall.postgresql.utf8.sql</file>
+		</sql>
+	</uninstall>
+	<update>
+		<schemas>
+			<schemapath type="mysql">sql/updates/mysql</schemapath>
+			<schemapath type="postgresql">sql/updates/postgresql</schemapath>
+		</schemas>
+	</update>
+
+	<media destination="com_drekmeta" folder="media">
+		<filename>joomla.asset.json</filename>
+		<folder>css</folder>
+		<folder>js</folder>
+	</media>
+
+	<administration>
+		<menu img="class:share-alt" link="option=com_drekmeta&amp;view=items">COM_DREKMETA</menu>
+		<files folder="administrator">
+			<filename>access.xml</filename>
+			<filename>config.xml</filename>
+			<folder>forms</folder>
+			<folder>language</folder>
+			<folder>services</folder>
+			<folder>sql</folder>
+			<folder>src</folder>
+			<folder>tmpl</folder>
+		</files>
+	</administration>
+</extension>

@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="utf-8"?>
+<form>
+	<fieldset name="target" label="COM_DREKMETA_TAB_TARGET">
+		<field
+			name="id"
+			type="number"
+			label="JGLOBAL_FIELD_ID_LABEL"
+			default="0"
+			class="readonly"
+			readonly="true"
+			filter="integer"
+		/>
+		<field
+			name="menu_item_id"
+			type="menuitem"
+			label="COM_DREKMETA_FIELD_MENU_ITEM_LABEL"
+			description="COM_DREKMETA_FIELD_MENU_ITEM_DESC"
+			client_id="0"
+			required="true"
+			filter="integer"
+			>
+			<option value="">COM_DREKMETA_FIELD_MENU_ITEM_SELECT</option>
+		</field>
+		<field
+			name="title"
+			type="text"
+			label="COM_DREKMETA_FIELD_TITLE_LABEL"
+			description="COM_DREKMETA_FIELD_TITLE_DESC"
+			maxlength="255"
+			filter="string"
+		/>
+		<field
+			name="state"
+			type="list"
+			label="JSTATUS"
+			class="form-select-color-state"
+			default="1"
+			validate="options"
+			filter="integer"
+			>
+			<option value="1">JPUBLISHED</option>
+			<option value="0">JUNPUBLISHED</option>
+		</field>
+	</fieldset>
+
+	<fieldset name="meta" label="COM_DREKMETA_TAB_META">
+		<field
+			name="og_title"
+			type="text"
+			label="COM_DREKMETA_FIELD_OG_TITLE_LABEL"
+			description="COM_DREKMETA_FIELD_OG_TITLE_DESC"
+			maxlength="255"
+			filter="string"
+		/>
+		<field
+			name="og_description"
+			type="textarea"
+			label="COM_DREKMETA_FIELD_OG_DESCRIPTION_LABEL"
+			description="COM_DREKMETA_FIELD_OG_DESCRIPTION_DESC"
+			rows="3"
+			filter="string"
+			class="drekmeta-counted"
+			data-recommended="200"
+		/>
+		<field
+			name="og_image"
+			type="media"
+			label="COM_DREKMETA_FIELD_OG_IMAGE_LABEL"
+			description="COM_DREKMETA_FIELD_OG_IMAGE_DESC"
+			types="images"
+			preview="tooltip"
+			filter="string"
+		/>
+		<field
+			name="og_image_alt"
+			type="text"
+			label="COM_DREKMETA_FIELD_OG_IMAGE_ALT_LABEL"
+			description="COM_DREKMETA_FIELD_OG_IMAGE_ALT_DESC"
+			maxlength="255"
+			filter="string"
+		/>
+		<field
+			name="og_type"
+			type="list"
+			label="COM_DREKMETA_FIELD_OG_TYPE_LABEL"
+			description="COM_DREKMETA_FIELD_OG_TYPE_DESC"
+			validate="options"
+			filter="string"
+			>
+			<option value="">COM_DREKMETA_OPTION_INHERIT</option>
+			<option value="website">website</option>
+			<option value="article">article</option>
+			<option value="profile">profile</option>
+			<option value="book">book</option>
+			<option value="video.movie">video.movie</option>
+			<option value="video.other">video.other</option>
+			<option value="music.song">music.song</option>
+		</field>
+		<field
+			name="og_site_name"
+			type="text"
+			label="COM_DREKMETA_FIELD_OG_SITE_NAME_LABEL"
+			description="COM_DREKMETA_FIELD_OG_SITE_NAME_DESC"
+			maxlength="255"
+			filter="string"
+		/>
+		<field
+			name="twitter_card"
+			type="list"
+			label="COM_DREKMETA_FIELD_TWITTER_CARD_LABEL"
+			description="COM_DREKMETA_FIELD_TWITTER_CARD_DESC"
+			validate="options"
+			filter="string"
+			>
+			<option value="">COM_DREKMETA_OPTION_INHERIT</option>
+			<option value="summary">COM_DREKMETA_OPTION_CARD_SUMMARY</option>
+			<option value="summary_large_image">COM_DREKMETA_OPTION_CARD_LARGE</option>
+		</field>
+		<field
+			name="theme_color"
+			type="color"
+			label="COM_DREKMETA_FIELD_THEME_COLOR_LABEL"
+			description="COM_DREKMETA_FIELD_THEME_COLOR_DESC"
+			format="hex"
+			default=""
+			filter="string"
+		/>
+	</fieldset>
+
+	<fieldset name="custom" label="COM_DREKMETA_TAB_CUSTOM">
+		<field
+			name="custom_tags"
+			type="subform"
+			label="COM_DREKMETA_FIELD_CUSTOM_TAGS_LABEL"
+			description="COM_DREKMETA_FIELD_CUSTOM_TAGS_DESC"
+			multiple="true"
+			layout="joomla.form.field.subform.repeatable-table"
+			buttons="add,remove,move"
+			min="0"
+			max="100"
+			>
+			<form>
+				<field
+					name="attribute"
+					type="list"
+					label="COM_DREKMETA_FIELD_TAG_ATTRIBUTE_LABEL"
+					default="property"
+					validate="options"
+					filter="string"
+					>
+					<option value="property">property</option>
+					<option value="name">name</option>
+					<option value="http-equiv">http-equiv</option>
+				</field>
+				<field
+					name="key"
+					type="text"
+					label="COM_DREKMETA_FIELD_TAG_KEY_LABEL"
+					hint="og:locale"
+					maxlength="128"
+					pattern="[A-Za-z0-9_:.\-]+"
+					filter="string"
+				/>
+				<field
+					name="value"
+					type="text"
+					label="COM_DREKMETA_FIELD_TAG_VALUE_LABEL"
+					hint="en_US"
+					filter="string"
+				/>
+			</form>
+		</field>
+	</fieldset>
+
+	<fieldset name="embed" label="COM_DREKMETA_TAB_EMBED">
+		<field
+			name="component_embed_enabled"
+			type="radio"
+			label="COM_DREKMETA_FIELD_EMBED_ENABLED_LABEL"
+			description="COM_DREKMETA_FIELD_EMBED_ENABLED_DESC"
+			layout="joomla.form.field.radio.switcher"
+			default="0"
+			filter="integer"
+			>
+			<option value="0">JNO</option>
+			<option value="1">JYES</option>
+		</field>
+		<field
+			name="component_embed"
+			type="textarea"
+			label="COM_DREKMETA_FIELD_EMBED_JSON_LABEL"
+			filter="raw"
+			class="d-none"
+			rows="2"
+		/>
+		<field
+			name="embed_media_picker"
+			type="media"
+			label="COM_DREKMETA_FIELD_EMBED_MEDIA_PICKER_LABEL"
+			types="images,videos"
+			preview="false"
+			filter="unset"
+		/>
+	</fieldset>
+</form>
