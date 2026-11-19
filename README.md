@@ -222,4 +222,4 @@ The tag is the only place the version lives; the `<version>` in `src/` is just a
 
 ## License
 
-GPL-2.0-or-later. Made by [drek124](https://github.com/drek124).
+[GPL-2.0-or-later](LICENSE). Made by [drek124](https://github.com/drek124).

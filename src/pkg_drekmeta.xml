@@ -8,7 +8,7 @@
 	<authorUrl>https://github.com/drek124</authorUrl>
 	<creationDate>2026-11</creationDate>
 	<copyright>(C) 2026 drek124</copyright>
-	<license>GNU General Public License version 2 or later; see LICENSE.txt</license>
+	<license>GNU General Public License version 2 or later; see LICENSE</license>
 	<version>1.0.0</version>
 	<description>PKG_DREKMETA_XML_DESCRIPTION</description>
 	<scriptfile>script.php</scriptfile>

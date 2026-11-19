@@ -4,7 +4,7 @@
  * @package     DREK Meta
  * @author      drek124 <https://github.com/drek124>
  * @copyright   (C) 2026 drek124
- * @license     GNU General Public License version 2 or later; see LICENSE.txt
+ * @license     GNU General Public License version 2 or later; see LICENSE
  */
 
 namespace Drek\Component\Drekmeta\Administrator\Helper;
