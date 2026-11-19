@@ -357,22 +357,25 @@
     const refreshAll = () => {
       if (queued) return;
       queued = true;
-      window.requestAnimationFrame(() => {
+      // A timer, not requestAnimationFrame: rAF pauses in background tabs/panes and would leave the preview stale.
+      window.setTimeout(() => {
         queued = false;
         counters();
         updateInherited();
         if (builder) builder.refresh(); else renderPreview();
-      });
+      }, 0);
     };
 
     const watched = /^jform\[(og_|twitter_card|theme_color|menu_item_id|component_embed_enabled|custom_tags)/;
+    // Capture phase on purpose: the core media field fires a non-bubbling "change" on its input when an image is
+    // picked or cleared, which a normal (bubbling) form listener never hears.
     ['input', 'change'].forEach((type) => {
       form.addEventListener(type, (e) => {
         const name = e.target && e.target.name;
         if (!name || !watched.test(name)) return;
         if (name === 'jform[menu_item_id]') onMenuChange();
         refreshAll();
-      });
+      }, true);
     });
 
     // The core colour picker (minicolors) fires jQuery events native listeners can't hear, so poll it.

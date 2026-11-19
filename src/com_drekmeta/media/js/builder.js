@@ -217,10 +217,11 @@
       if (structural) this.renderTree();
       if (this.pending) return;
       this.pending = true;
-      window.requestAnimationFrame(() => {
+      // A timer, not requestAnimationFrame: rAF pauses in background tabs/panes and would freeze the counters.
+      window.setTimeout(() => {
         this.pending = false;
         this.update();
-      });
+      }, 0);
     }
 
     // -- layout -----------------------------------------------------------------------------------
