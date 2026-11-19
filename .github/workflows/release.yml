@@ -57,9 +57,26 @@ jobs:
       - name: Check JavaScript syntax
         run: for f in src/com_drekmeta/media/js/*.js; do node --check "$f"; done
 
+      # ubuntu-latest has no xmllint; PHP's libxml parser is just as strict and already set up.
       - name: Validate XML manifests and forms
         run: |
-          find src -name '*.xml' -print0 | xargs -0 -n1 xmllint --noout
+          php -r '
+            libxml_use_internal_errors(true);
+            $failed = 0;
+            $files  = new RegexIterator(new RecursiveIteratorIterator(new RecursiveDirectoryIterator("src")), "/\.xml$/");
+            foreach ($files as $file) {
+                if (simplexml_load_file((string) $file) === false) {
+                    foreach (libxml_get_errors() as $e) {
+                        printf("::error file=%s,line=%d::%s\n", $file, $e->line, trim($e->message));
+                    }
+                    libxml_clear_errors();
+                    $failed++;
+                    continue;
+                }
+                echo "ok  $file\n";
+            }
+            exit($failed ? 1 : 0);
+          '
 
       - name: Stamp version
         env:
@@ -103,7 +120,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
-        run: gh release upload "$RELEASE_TAG" "$PACKAGE" --clobber
+        run: gh release upload "$RELEASE_TAG" "$PACKAGE" --clobber --repo "$GITHUB_REPOSITORY"
 
       - name: Upload build artifact
         if: github.event_name == 'workflow_dispatch'
