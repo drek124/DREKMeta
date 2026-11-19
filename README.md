@@ -11,7 +11,7 @@ plus a visual builder for Discord's new **Component Embeds**.
 [![PHP 8.1+](https://img.shields.io/badge/PHP-8.1%2B-777bb4?logo=php&logoColor=white)](https://www.php.net/)
 [![License: GPL v2+](https://img.shields.io/badge/license-GPL--2.0--or--later-blue)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.html)
 
-[**Download**](../../releases/latest) · [Features](#features) · [Install](#install) · [Component embeds](#discord-component-embeds) · [How it works](#how-it-works) · [Development](#development)
+[**Download**](../../releases/latest) · [Features](#features) · [Install](#install) · [Component embeds](#discord-component-embeds) · [How it works](#how-it-works)
 
 <img src=".github/assets/builder.jpg" alt="The component embed builder: component tree on the left, live Discord preview on the right, byte and component counters on top" width="820">
 
@@ -33,6 +33,7 @@ Joomla core gives you a meta description and robots per menu item. That's it. No
 - 🔍 **Previews** that look like Discord, for both the standard OG card and the component embed, plus a table showing where every tag's value comes from
 - 🧩 **Placeholders** like `{og_title}` and `{page_url}`, so one layout works on every page
 - 🛡️ **Validated three times** (browser, save, render). A broken embed never reaches the page; the OG tags stay as the fallback.
+- 🔄 **One-click updates** through Joomla's own updater, straight from this repo's releases (checksum-verified)
 - 🧹 **Clean uninstall**: removes everything, including the table
 
 <div align="center">
@@ -57,6 +58,15 @@ The package installs the admin component and the system plugin, switches the plu
 
 > [!TIP]
 > Prefer the CLI? `php cli/joomla.php extension:install --path=/path/to/pkg_drekmeta-x.y.z.zip`
+
+### Updates
+
+You only install by hand once. After that, new releases show up in Joomla like any other extension update: **System → Update → Extensions**, tick **DREK Meta**, click **Update**. Your records and settings are kept.
+
+The update server is this repo's latest release (`releases/latest/download/updates.xml`). Joomla verifies the download against the SHA-256 in that file before installing, and only stable releases are offered (prereleases never become "latest").
+
+> [!NOTE]
+> **v1.0.0** shipped before the update server existed, so a site on 1.0.0 needs one manual install of a newer release. Every version after that updates itself.
 
 ## Usage
 
@@ -160,65 +170,14 @@ Plus standard Joomla **Permissions**.
 
 ## Uninstall
 
-Uninstall **pkg_drekmeta** under **System → Manage → Extensions**. The component, plugin, media, language files and the `#__drekmeta_items` table are all removed. Only `administrator/logs/drekmeta.php` stays, if anything was ever logged.
+Uninstall **pkg_drekmeta** under **System → Manage → Extensions**. The component, plugin, media, language files, update site and the `#__drekmeta_items` table are all removed. Only `administrator/logs/drekmeta.php` stays, if anything was ever logged.
 
-## Development
-
-```
-src/
-├── pkg_drekmeta.xml · script.php · language/      package manifest, installer script
-├── com_drekmeta/
-│   ├── drekmeta.xml
-│   ├── administrator/
-│   │   ├── src/Helper/EmbedHelper.php             embed validation, shared with the plugin
-│   │   ├── src/Helper/MetaHelper.php              merge rules, image URLs, custom tags
-│   │   └── access.xml · config.xml · forms/ · sql/ · tmpl/ · language/ · services/
-│   └── media/
-│       └── js/embed-core.js                       1:1 JS mirror of EmbedHelper.php
-│           js/builder.js · js/item-edit.js · css/drekmeta.css
-└── plg_system_drekmeta/                           Drek\Plugin\System\Drekmeta
-```
-
-> [!NOTE]
-> `embed-core.js` mirrors `EmbedHelper.php` line by line (same key order, rules and error keys). That's why the builder's byte counter matches what the plugin prints exactly. Change one, change the other.
-
-### Releasing
-
-There's no local build step. Publishing a GitHub release builds the package:
-
-1. Create a release with a tag like `v1.2.3`.
-2. [`release.yml`](.github/workflows/release.yml) lints the PHP, JS and XML, stamps `1.2.3` into all three manifests, builds `pkg_drekmeta-1.2.3.zip` and attaches it to the release.
-
-The tag is the only place the version lives; the `<version>` in `src/` is just a placeholder. Need a zip without releasing? Run **Actions → Release package → Run workflow** and download it from the run's artifacts.
-
-<details>
-<summary><b>Manual test checklist</b></summary>
-
-<br>
-
-1. **Install** the package. *System - DREK Meta* is enabled, and the list shows the global row.
-2. **Global defaults**: set an image and colour. Every page's source has `og:title`, `og:type`, `og:site_name`, `og:url`, `og:image` (absolute) + width/height/alt, the `twitter:*` mirrors and `theme-color`.
-3. **Per item**: give one menu item a different image. That page uses it (with its real size); others keep the global one.
-4. **Custom tag**: add `property` / `og:locale` / `en_US`. It shows up. A custom tag with a preset's key replaces the preset.
-5. **Component embed**: *Start from page*, switch it on, save. `curl -A "Discordbot/2.0" <url>` shows the `<script id="discord:component-embed">` tag, and its byte count equals the builder's **Bytes** counter.
-6. **Limits**: 41 components, 11 gallery items, > 3,000 bytes, or a button with an extra key turns the counter / component red and blocks saving. Force one into the `component_embed` column instead: the page prints no embed, keeps its OG tags, and `administrator/logs/drekmeta.php` says why.
-7. **Discord**: check the public URL in the [Embed Debugger](https://discord.com/developers/embeds), then paste it into Discord with `?v=N`.
-8. **Disable the plugin**: every DREK Meta tag disappears and the page source is back to what the template outputs on its own.
-9. **Uninstall, then reinstall**: the site keeps working, the table and every file are gone, and reinstalling brings back a fresh global row.
-
-</details>
-
-<details>
-<summary><b>Known limits</b></summary>
-
-<br>
+## Known limits
 
 - The builder estimates fallback titles and descriptions from the menu item. If a component sets a different title at runtime and you use `{og_title}` without setting og:title, the live byte count can differ a little. Set og:title, or check the live page.
 - The global record's embed is validated on save against the home page. On other pages it's re-validated at render time and skipped (and logged) if it doesn't fit there.
 - The external `<link rel="discord:component-embed">` variant isn't supported yet.
 - Discord's link previews are officially "subject to change". The Embed Debugger is the source of truth.
-
-</details>
 
 ## License
 

@@ -1,8 +1,13 @@
 name: Release package
 
-# Publishing a GitHub release tagged vX.Y.Z (or X.Y.Z) builds pkg_drekmeta-X.Y.Z.zip and attaches it to that release.
-# The tag is the single source of truth for the version: it's stamped into all three manifests before zipping.
-# Run it by hand (Actions -> Release package -> Run workflow) to get the zip as a build artifact without releasing.
+# Publishing a GitHub release tagged vX.Y.Z (or X.Y.Z) builds pkg_drekmeta-X.Y.Z.zip plus updates.xml and attaches
+# both to that release. The tag is the single source of truth for the version: it's stamped into all manifests.
+#
+# Joomla's update server is https://github.com/<repo>/releases/latest/download/updates.xml, so every site with the
+# package installed sees a new stable release under System -> Update -> Extensions. Prereleases never become
+# "latest", so they don't reach those sites.
+#
+# Run it by hand (Actions -> Release package -> Run workflow) to get both files as a build artifact without releasing.
 
 on:
   release:
@@ -28,7 +33,7 @@ jobs:
 
     steps:
       - name: Check out
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Resolve version
         id: version
@@ -42,8 +47,22 @@ jobs:
             echo "::error::'$RAW' isn't a version. Tag releases like v1.2.3."
             exit 1
           fi
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Building version $VERSION"
+
+          # Joomla's update stability levels: dev, alpha, beta, rc, stable.
+          case "${VERSION,,}" in
+            *dev*)   STABILITY=dev ;;
+            *alpha*) STABILITY=alpha ;;
+            *beta*)  STABILITY=beta ;;
+            *rc*)    STABILITY=rc ;;
+            *)       STABILITY=stable ;;
+          esac
+
+          {
+            echo "version=$VERSION"
+            echo "tag=${RELEASE_TAG:-v$VERSION}"
+            echo "stability=$STABILITY"
+          } >> "$GITHUB_OUTPUT"
+          echo "Building version $VERSION ($STABILITY)"
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
@@ -78,7 +97,7 @@ jobs:
             exit($failed ? 1 : 0);
           '
 
-      - name: Stamp version
+      - name: Stamp version and update server
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
@@ -92,6 +111,11 @@ jobs:
           done
           sed -i -E "s/\"version\": \"[^\"]*\"/\"version\": \"${VERSION}\"/" src/com_drekmeta/media/joomla.asset.json
 
+          # Point the update server at the repository this runs in, so forks update from themselves.
+          SERVER="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/latest/download/updates.xml"
+          sed -i -E "s#https://[^<]*/releases/latest/download/updates\.xml#${SERVER}#" src/pkg_drekmeta.xml
+          grep -H 'updates.xml' src/pkg_drekmeta.xml
+
       - name: Build zips
         env:
           VERSION: ${{ steps.version.outputs.version }}
@@ -101,7 +125,7 @@ jobs:
           STAGE="$OUT/stage"
           mkdir -p "$STAGE/packages"
 
-          # -X drops extra file attributes, -D skips directory entries Joomla doesn't need.
+          # -X leaves out extra file attributes, -x '.*' skips dotfiles.
           (cd src/com_drekmeta && zip -rqX "$STAGE/packages/com_drekmeta.zip" . -x '.*')
           (cd src/plg_system_drekmeta && zip -rqX "$STAGE/packages/plg_system_drekmeta.zip" . -x '.*')
 
@@ -113,19 +137,62 @@ jobs:
 
           echo "Package contents:"
           unzip -l "$PACKAGE"
+          echo "OUT=$OUT" >> "$GITHUB_ENV"
           echo "PACKAGE=$PACKAGE" >> "$GITHUB_ENV"
+
+      - name: Write Joomla update manifest
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ steps.version.outputs.tag }}
+          STABILITY: ${{ steps.version.outputs.stability }}
+        run: |
+          set -euo pipefail
+          REPO_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
+          SHA256="$(sha256sum "$PACKAGE" | cut -d' ' -f1)"
+
+          # targetplatform is matched as ^regex against the Joomla version: 4.4.x, 5.x and 6.x.
+          cat > "$OUT/updates.xml" <<EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <updates>
+          	<update>
+          		<name>DREK Meta</name>
+          		<description>DREK Meta ${VERSION}</description>
+          		<element>pkg_drekmeta</element>
+          		<type>package</type>
+          		<version>${VERSION}</version>
+          		<client>site</client>
+          		<infourl title="DREK Meta ${VERSION}">${REPO_URL}/releases/tag/${TAG}</infourl>
+          		<downloads>
+          			<downloadurl type="full" format="zip">${REPO_URL}/releases/download/${TAG}/pkg_drekmeta-${VERSION}.zip</downloadurl>
+          		</downloads>
+          		<sha256>${SHA256}</sha256>
+          		<tags>
+          			<tag>${STABILITY}</tag>
+          		</tags>
+          		<maintainer>drek124</maintainer>
+          		<maintainerurl>https://github.com/drek124</maintainerurl>
+          		<targetplatform name="joomla" version="(4\.4|5|6)\." />
+          		<php_minimum>8.1</php_minimum>
+          	</update>
+          </updates>
+          EOF
+
+          php -r 'exit(simplexml_load_file($argv[1]) === false ? 1 : 0);' "$OUT/updates.xml"
+          cat "$OUT/updates.xml"
 
       - name: Attach to release
         if: github.event_name == 'release'
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
-        run: gh release upload "$RELEASE_TAG" "$PACKAGE" --clobber --repo "$GITHUB_REPOSITORY"
+          TAG: ${{ steps.version.outputs.tag }}
+        run: gh release upload "$TAG" "$PACKAGE" "$OUT/updates.xml" --clobber --repo "$GITHUB_REPOSITORY"
 
       - name: Upload build artifact
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pkg_drekmeta-${{ steps.version.outputs.version }}
-          path: ${{ env.PACKAGE }}
+          path: |
+            ${{ env.PACKAGE }}
+            ${{ env.OUT }}/updates.xml
           if-no-files-found: error

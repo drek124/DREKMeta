@@ -19,4 +19,9 @@
 	<languages folder="language">
 		<language tag="en-GB">en-GB/pkg_drekmeta.sys.ini</language>
 	</languages>
+	<!-- updates.xml is attached to every GitHub release by .github/workflows/release.yml; "latest" always points at the newest stable one.
+	     The release workflow rewrites this URL to the repository it runs in, so forks update from themselves. -->
+	<updateservers>
+		<server type="extension" priority="1" name="DREK Meta">https://github.com/drek124/DREKMeta/releases/latest/download/updates.xml</server>
+	</updateservers>
 </extension>
