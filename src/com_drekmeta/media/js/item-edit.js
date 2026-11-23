@@ -235,6 +235,28 @@
       return Object.values(rows).filter((r) => r.key && /^[A-Za-z0-9_:.-]{1,128}$/.test(r.key.trim()));
     };
 
+    const SINGLE_RELS = ['canonical', 'manifest', 'shortlink'];
+
+    const readCustomLinks = () => {
+      const rows = {};
+      form.querySelectorAll('input[name^="jform[custom_links]"]').forEach((el) => {
+        const m = String(el.getAttribute('name') || '').match(/^jform\[custom_links\]\[([^\]]+)\]\[(rel|href|attributes)\]$/);
+        if (!m) return;
+        rows[m[1]] = rows[m[1]] || {};
+        rows[m[1]][m[2]] = el.value;
+      });
+      return Object.values(rows)
+        .map((r) => ({ rel: String(r.rel || '').trim().toLowerCase().replace(/\s+/g, ' '), href: String(r.href || '').trim(), attributes: String(r.attributes || '').trim() }))
+        .filter((r) => /^[a-z0-9_:.-]+( [a-z0-9_:.-]+)*$/.test(r.rel) && (r.href !== '' || SINGLE_RELS.includes(r.rel)));
+    };
+
+    const absoluteHref = (href) => {
+      if (/^https?:\/\//i.test(href)) return href;
+      if (href.startsWith('//')) return `https:${href}`;
+      if (href.startsWith('/')) return opts.site.hostRoot + href;
+      return `${opts.site.root.replace(/\/+$/, '')}/${href}`;
+    };
+
     const source = (name, item, ctxValue) => {
       if (item[name]) return 'item';
       if (!opts.isGlobal && opts.global[name]) return 'inherited';
@@ -298,6 +320,25 @@
         const i = rows.findIndex((r) => r[0].toLowerCase() === k.toLowerCase());
         if (i !== -1) rows.splice(i, 1);
         rows.push([k, v, `${s}-custom`]);
+      });
+
+      const links = new Map();
+      const addLink = (r, s) => {
+        const key = SINGLE_RELS.includes(r.rel) ? r.rel : `${r.rel}|${r.href}`;
+        links.delete(key);
+        links.set(key, [r, s]);
+      };
+      if (!opts.isGlobal) (opts.global.customLinks || []).forEach((r) => addLink(r, 'inherited'));
+      readCustomLinks().forEach((r) => addLink(r, 'item'));
+      links.forEach(([r, s]) => {
+        if (r.href === '') return;
+        // Same filter as MetaHelper::linkAttributes(): no event handlers, no rel/href duplicates.
+        const attrs = (r.attributes.match(/[^\s="'<>/`]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?/g) || [])
+          .filter((a) => { const n = a.split('=')[0].trim().toLowerCase(); return /^[a-z][a-z0-9_:.-]{0,63}$/.test(n) && !n.startsWith('on') && n !== 'rel' && n !== 'href'; })
+          .slice(0, 20)
+          .join(' ');
+        const label = `link rel="${r.rel}"${attrs ? ` ${attrs}` : ''}`;
+        rows.push([label, absoluteHref(r.href), `${s}-custom`]);
       });
 
       const tbody = previewRoot.querySelector('.drekmeta-tags tbody');
@@ -366,7 +407,7 @@
       }, 0);
     };
 
-    const watched = /^jform\[(og_|twitter_card|theme_color|menu_item_id|component_embed_enabled|custom_tags)/;
+    const watched = /^jform\[(og_|twitter_card|theme_color|menu_item_id|component_embed_enabled|custom_tags|custom_links)/;
     // Capture phase on purpose: the core media field fires a non-bubbling "change" on its input when an image is
     // picked or cleared, which a normal (bubbling) form listener never hears.
     ['input', 'change'].forEach((type) => {

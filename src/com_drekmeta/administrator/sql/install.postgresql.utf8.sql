@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS "#__drekmeta_items" (
   "twitter_card" varchar(30) DEFAULT NULL,
   "theme_color" varchar(7) DEFAULT NULL,
   "custom_tags" text,
+  "custom_links" text,
   "component_embed_enabled" smallint NOT NULL DEFAULT 0,
   "component_embed" text,
   "state" smallint NOT NULL DEFAULT 1,

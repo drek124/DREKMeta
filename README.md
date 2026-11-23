@@ -28,6 +28,7 @@ Joomla core gives you a meta description and robots per menu item. That's it. No
 - 🏷️ **Meta tags per menu item**: `og:title`, `og:description`, `og:image` (+ alt, auto width/height), `og:type`, `og:site_name`, `twitter:card`, `theme-color`
 - 🌍 **Global defaults** that every page inherits field by field, so you only override what's different
 - ➕ **Custom tags**: any `name` / `property` / `http-equiv` tag, reorderable, overrides presets with the same key
+- 🔗 **Custom links**: any `<link>` in the head (`canonical`, `alternate` + `hreflang`, `preload`, ...) with extra attributes; canonical / manifest / shortlink replace whatever Joomla or other extensions added
 - 🧱 **Discord Component Embed builder**: containers, sections, text, thumbnails, media galleries, separators and link buttons, with drag-and-drop
 - 📏 **Live limits**: bytes, components and gallery items, measured on the *exact* JSON the plugin prints
 - 🔍 **Previews** that look like Discord, for both the standard OG card and the component embed, plus a table showing where every tag's value comes from
@@ -82,7 +83,7 @@ Click **New**, pick a menu item and fill in only what should be different. Empty
 |---|---|
 | **Target** | Menu item (one record each), admin label that fills itself in |
 | **Meta Tags** | og:title, og:description (with char/byte counter), og:image + alt, og:type, og:site_name, twitter:card, theme-color |
-| **Custom Tags** | Extra `<meta>` rows: attribute, key, value |
+| **Custom Tags & Links** | Extra `<meta>` rows (attribute, key, value) and `<link>` rows (rel, href, other attributes). An empty canonical href removes the canonical on that page |
 | **Component Embed** | The builder (see below) |
 | **Preview** | Discord-style standard / component embed, plus the full tag list with sources (*this item*, *inherited*, *fallback*, *custom*) |
 
@@ -148,7 +149,7 @@ On every site HTML page, `plg_system_drekmeta` hooks `onBeforeCompileHead` and:
 3. Merges them field by field. `og:image:alt` follows whichever record supplied the image.
 4. Fills gaps from the document title / meta description / site name (configurable).
 5. Strips `og:*` / `twitter:*` tags others added (configurable), then writes its own: `property=` for OG, `name=` for `twitter:*` and `theme-color`, mirroring title, description and image to Twitter tags.
-6. Applies custom tags last, so they win.
+6. Applies custom tags last, so they win, then writes custom links. For `canonical`, `manifest` and `shortlink` only one survives: the item's over the global one, replacing any other extension's.
 7. Resolves, re-validates and prints the component embed, for **every** visitor (not only Discordbot) so page caching can't serve the wrong variant.
 
 Nothing here ever throws on the frontend. Errors are caught and logged, and disabling the plugin puts the page back exactly as it was.

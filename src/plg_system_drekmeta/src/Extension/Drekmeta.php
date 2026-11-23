@@ -113,6 +113,7 @@ final class Drekmeta extends CMSPlugin implements SubscriberInterface, DatabaseA
 
         $this->writePresets($doc, $meta, $image, $pageUrl, (bool) $params->get('output_og_url', 1));
         $this->writeCustomTags($doc, $global, $item);
+        $this->writeCustomLinks($doc, $global, $item);
 
         if ($params->get('component_embeds_enabled', 1)) {
             $this->writeComponentEmbed($doc, $global, $item, [
@@ -318,6 +319,66 @@ final class Drekmeta extends CMSPlugin implements SubscriberInterface, DatabaseA
 
             $doc->setMetaData($tag['key'], $tag['value'], $tag['attribute']);
         }
+    }
+
+    /**
+     * Global custom links first, then the item's. Single-use rels (canonical, ...) are keyed by rel so the item
+     * wins and whatever another extension (or the core SEF plugin) added is removed; everything else by rel + href.
+     */
+    private function writeCustomLinks(HtmlDocument $doc, ?object $global, ?object $item): void
+    {
+        $links = [];
+
+        foreach ([$global, $item] as $row) {
+            if (!$row) {
+                continue;
+            }
+
+            foreach (MetaHelper::customLinks($row->custom_links ?? '') as $link) {
+                $single = \in_array($link['rel'], MetaHelper::SINGLE_LINK_RELS, true);
+                $key    = $single ? $link['rel'] : $link['rel'] . '|' . $link['href'];
+
+                // Re-insert so the order follows the latest definition.
+                unset($links[$key]);
+                $links[$key] = $link;
+            }
+        }
+
+        if (!$links) {
+            return;
+        }
+
+        $root = Uri::root();
+
+        foreach ($links as $link) {
+            if (\in_array($link['rel'], MetaHelper::SINGLE_LINK_RELS, true)) {
+                $this->removeLinks($doc, $link['rel']);
+            }
+
+            if ($link['href'] === '') {
+                continue;
+            }
+
+            // Raw custom HTML instead of addHeadLink(): that one keys links by href, so e.g. canonical and an
+            // hreflang alternate pointing at the same URL would overwrite each other.
+            $doc->addCustomTag(MetaHelper::linkHtml($link, $root));
+        }
+    }
+
+    private function removeLinks(HtmlDocument $doc, string $rel): void
+    {
+        foreach ($doc->_links as $href => $link) {
+            if (($link['relType'] ?? 'rel') === 'rel' && strcasecmp(trim((string) ($link['relation'] ?? '')), $rel) === 0) {
+                unset($doc->_links[$href]);
+            }
+        }
+
+        $pattern = '/<link\s[^>]*rel\s*=\s*["\']?' . preg_quote($rel, '/') . '["\'\s>]/i';
+
+        $doc->_custom = array_values(array_filter(
+            $doc->_custom,
+            static fn ($html) => !preg_match($pattern, (string) $html)
+        ));
     }
 
     private function writeComponentEmbed(HtmlDocument $doc, ?object $global, ?object $item, array $vars): void

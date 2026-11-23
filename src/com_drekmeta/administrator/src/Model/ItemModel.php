@@ -106,6 +106,14 @@ class ItemModel extends AdminModel
 
         $item->custom_tags = $rows;
 
+        $rows = [];
+
+        foreach (MetaHelper::customLinks($item->custom_links ?? '') as $i => $row) {
+            $rows['custom_links' . $i] = $row;
+        }
+
+        $item->custom_links = $rows;
+
         return $item;
     }
 
@@ -148,6 +156,9 @@ class ItemModel extends AdminModel
         // Custom tags: subform rows -> clean JSON list.
         $tags                = MetaHelper::customTags(array_values((array) ($data['custom_tags'] ?? [])));
         $data['custom_tags'] = $tags ? json_encode($tags, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : null;
+
+        $links                = MetaHelper::customLinks(array_values((array) ($data['custom_links'] ?? [])));
+        $data['custom_links'] = $links ? json_encode($links, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : null;
 
         if (!$this->prepareEmbed($data, $isGlobal)) {
             return false;
@@ -276,6 +287,7 @@ class ItemModel extends AdminModel
 
         $globalValues['og_image_url'] = MetaHelper::image($globalValues['og_image'])['url'];
         $globalValues['customTags']   = $global ? MetaHelper::customTags($global->custom_tags ?? '') : [];
+        $globalValues['customLinks']  = $global ? MetaHelper::customLinks($global->custom_links ?? '') : [];
 
         return [
             'isGlobal'  => $isGlobal,

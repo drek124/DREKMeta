@@ -140,9 +140,14 @@ $master   = $this->builderOptions['fallbacks']['masterSwitch'];
 
 		<?php echo HTMLHelper::_('uitab.addTab', 'drekmetaTab', 'custom', Text::_('COM_DREKMETA_TAB_CUSTOM')); ?>
 		<fieldset class="options-form">
-			<legend><?php echo Text::_('COM_DREKMETA_TAB_CUSTOM'); ?></legend>
+			<legend><?php echo Text::_('COM_DREKMETA_FIELD_CUSTOM_TAGS_LABEL'); ?></legend>
 			<p class="text-muted"><?php echo Text::_('COM_DREKMETA_CUSTOM_HELP'); ?></p>
 			<?php echo $this->form->renderField('custom_tags'); ?>
+		</fieldset>
+		<fieldset class="options-form">
+			<legend><?php echo Text::_('COM_DREKMETA_FIELD_CUSTOM_LINKS_LABEL'); ?></legend>
+			<p class="text-muted"><?php echo Text::_('COM_DREKMETA_CUSTOM_LINKS_HELP'); ?></p>
+			<?php echo $this->form->renderField('custom_links'); ?>
 		</fieldset>
 		<?php echo HTMLHelper::_('uitab.endTab'); ?>
 

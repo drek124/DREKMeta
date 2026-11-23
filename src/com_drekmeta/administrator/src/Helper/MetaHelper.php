@@ -44,6 +44,19 @@ final class MetaHelper
 
     public const THEME_COLOR_PATTERN = '/^#[0-9A-Fa-f]{6}$/';
 
+    /** <link rel="">: one or more space-separated link types. */
+    public const LINK_REL_PATTERN = '/^[A-Za-z0-9_:.\-]+(?: [A-Za-z0-9_:.\-]+)*$/';
+
+    /** Extra <link> attribute names. Event handlers (on*) and the dedicated rel/href columns are refused separately. */
+    public const LINK_ATTR_PATTERN = '/^[A-Za-z][A-Za-z0-9_:.\-]{0,63}$/';
+
+    public const MAX_LINK_ATTRIBUTES = 20;
+
+    public const MAX_HREF_LENGTH = 2048;
+
+    /** Rels that only make sense once per page: an item's value replaces the global one and anything Joomla added. */
+    public const SINGLE_LINK_RELS = ['canonical', 'manifest', 'shortlink'];
+
     /**
      * Item values override global ones. og:image:alt follows whichever row supplied the image.
      *
@@ -169,6 +182,169 @@ final class MetaHelper
         }
 
         return $out;
+    }
+
+    /**
+     * Normalises custom <link> rows from the subform or JSON. Invalid rows are dropped.
+     *
+     * An empty href is kept only for single-use rels (canonical, ...): it means "remove it on this page".
+     *
+     * @param   mixed  $links  JSON string or array of rows
+     *
+     * @return  array<int, array{rel: string, href: string, attributes: string}>
+     */
+    public static function customLinks($links): array
+    {
+        if (\is_string($links)) {
+            $links = trim($links) === '' ? [] : json_decode($links, true);
+        }
+
+        if (!\is_array($links)) {
+            return [];
+        }
+
+        $out = [];
+
+        foreach ($links as $row) {
+            if (!\is_array($row)) {
+                continue;
+            }
+
+            $rel  = strtolower(preg_replace('/\s+/', ' ', trim((string) ($row['rel'] ?? ''))));
+            $href = str_replace(' ', '%20', trim((string) ($row['href'] ?? '')));
+
+            if ($rel === '' || \strlen($rel) > 128 || !preg_match(self::LINK_REL_PATTERN, $rel)) {
+                continue;
+            }
+
+            if ($href === '' ? !\in_array($rel, self::SINGLE_LINK_RELS, true) : !self::isSafeHref($href)) {
+                continue;
+            }
+
+            $attributes = self::linkAttributes((string) ($row['attributes'] ?? ''));
+
+            $out[] = ['rel' => $rel, 'href' => $href, 'attributes' => self::attributesToString($attributes)];
+        }
+
+        return $out;
+    }
+
+    /**
+     * http(s), protocol-relative or site-relative only; no control characters, no javascript:/data: and friends.
+     */
+    public static function isSafeHref(string $href): bool
+    {
+        if ($href === '' || \strlen($href) > self::MAX_HREF_LENGTH || preg_match('/[\x00-\x20\x7F<>"\'`]/', $href)) {
+            return false;
+        }
+
+        if (preg_match('/^([A-Za-z][A-Za-z0-9+.\-]*):/', $href, $m)) {
+            return \in_array(strtolower($m[1]), ['http', 'https'], true);
+        }
+
+        return true;
+    }
+
+    /**
+     * Absolute URL for an href: relative ones are resolved against the site root.
+     */
+    public static function absoluteHref(string $href, ?string $root = null): string
+    {
+        if (preg_match('#^https?://#i', $href)) {
+            return $href;
+        }
+
+        if (str_starts_with($href, '//')) {
+            return 'https:' . $href;
+        }
+
+        $root = $root ?? Uri::root();
+
+        // "/path" is relative to the host, "path" to the Joomla root (which may live in a subfolder).
+        return str_starts_with($href, '/')
+            ? self::hostRoot($root) . $href
+            : rtrim($root, '/') . '/' . $href;
+    }
+
+    /**
+     * Parses `hreflang="en" type=image/png crossorigin` into [name => value]. Unsafe or unknown syntax is dropped.
+     *
+     * @return  array<string, string>
+     */
+    public static function linkAttributes(string $text): array
+    {
+        $out = [];
+
+        preg_match_all(
+            '/([^\s="\'<>\/`]+)(?:\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\s"\'=<>`]+)))?/',
+            $text,
+            $matches,
+            PREG_SET_ORDER
+        );
+
+        foreach ($matches as $m) {
+            $name = strtolower($m[1]);
+
+            if (
+                !preg_match(self::LINK_ATTR_PATTERN, $name)
+                || str_starts_with($name, 'on')
+                || \in_array($name, ['rel', 'href'], true)
+            ) {
+                continue;
+            }
+
+            $value = ($m[2] ?? '') . ($m[3] ?? '') . ($m[4] ?? '');
+
+            $out[$name] = preg_replace('/[\x00-\x1F\x7F]/', '', $value);
+
+            if (\count($out) >= self::MAX_LINK_ATTRIBUTES) {
+                break;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param   array<string, string>  $attributes
+     */
+    public static function attributesToString(array $attributes): string
+    {
+        $parts = [];
+
+        // Stored as typed (not entity-encoded) so it round-trips through linkAttributes(); escaping happens on output.
+        foreach ($attributes as $name => $value) {
+            if ($value === '') {
+                $parts[] = $name;
+            } elseif (!str_contains($value, '"')) {
+                $parts[] = $name . '="' . $value . '"';
+            } elseif (!str_contains($value, "'")) {
+                $parts[] = $name . "='" . $value . "'";
+            } else {
+                $parts[] = $name . '="' . str_replace('"', '', $value) . '"';
+            }
+        }
+
+        return implode(' ', $parts);
+    }
+
+    /**
+     * Ready-to-print <link> element for a normalised row.
+     */
+    public static function linkHtml(array $link, ?string $root = null): string
+    {
+        $attributes = ['rel' => $link['rel'], 'href' => self::absoluteHref($link['href'], $root)]
+            + self::linkAttributes($link['attributes']);
+
+        $html = '<link';
+
+        foreach ($attributes as $name => $value) {
+            $html .= $value === '' && $name !== 'href'
+                ? ' ' . $name
+                : ' ' . $name . '="' . htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"';
+        }
+
+        return $html . '>';
     }
 
     /**

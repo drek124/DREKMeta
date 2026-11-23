@@ -170,6 +170,43 @@
 				/>
 			</form>
 		</field>
+		<field
+			name="custom_links"
+			type="subform"
+			label="COM_DREKMETA_FIELD_CUSTOM_LINKS_LABEL"
+			description="COM_DREKMETA_FIELD_CUSTOM_LINKS_DESC"
+			multiple="true"
+			layout="joomla.form.field.subform.repeatable-table"
+			buttons="add,remove,move"
+			min="0"
+			max="100"
+			>
+			<form>
+				<field
+					name="rel"
+					type="text"
+					label="COM_DREKMETA_FIELD_LINK_REL_LABEL"
+					hint="canonical"
+					maxlength="128"
+					filter="string"
+				/>
+				<field
+					name="href"
+					type="text"
+					label="COM_DREKMETA_FIELD_LINK_HREF_LABEL"
+					hint="https://example.com/page"
+					maxlength="2048"
+					filter="string"
+				/>
+				<field
+					name="attributes"
+					type="text"
+					label="COM_DREKMETA_FIELD_LINK_ATTRIBUTES_LABEL"
+					hint="hreflang=&quot;en&quot;"
+					filter="raw"
+				/>
+			</form>
+		</field>
 	</fieldset>
 
 	<fieldset name="embed" label="COM_DREKMETA_TAB_EMBED">
